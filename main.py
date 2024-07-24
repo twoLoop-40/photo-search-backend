@@ -1,13 +1,17 @@
-from fastapi import FastAPI
+import uvicorn
+from fastapi import FastAPI, Depends
+from db.connect_db import connection
+from db.db_settings import mongo_settings
 
 app = FastAPI()
 
 
 @app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
+async def root(database=Depends(lambda: connection.get_db(mongo_settings.store_db))):
+    coll_value = mongo_settings.latex_source_coll
+    async with database as db:
+        coll = db[coll_value]
+        count_document = await coll.aggregate([
+            {"$count": "total_document"}
+        ]).to_list(length=None)
+        return {"message": count_document}
