@@ -62,7 +62,10 @@ class VectorQuery(BaseModel):
 
 
 if __name__ == "__main__":
-    def test_vector_query():
+    import asyncio
+
+
+    async def test_vector_query():
         query = r"""
          이 문제는 직사각형의 성질, 중점, 원의 접선, 삼각함수 등을 이용한 문제입니다.
          먼저 직사각형 $ABCD$의 변의 길이를 이용하여 중점 $E$와 $F$의 좌표를 구합니다. 
@@ -70,8 +73,8 @@ if __name__ == "__main__":
          마지막으로 $\theta$의 사인 값을 구하여 주어진 형태로 표현한 후, $30(p+q)$의 값을 계산합니다.    
         """
         concept_query = VectorQuery()
-        result = concept_query.content_retriever(query, score_limit=0.5)
+        result = await concept_query.content_retriever(query, score_limit=0.5)
         print(result)
 
 
-    test_vector_query()
+    asyncio.run(test_vector_query())

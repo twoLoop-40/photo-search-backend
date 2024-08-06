@@ -31,7 +31,7 @@ def paste_description(math_problem: str, image_descriptions: list[str]) -> str:
     return result
 
 
-AssociateImage = Callable[[str, dict[str, str]], str]
+AssociateImage = Callable[[str, list[str]], str]
 
 
 class SearchProblem(BaseModel):
@@ -59,7 +59,7 @@ class SearchProblem(BaseModel):
             self.refined_math_problem = math_problem
             return math_problem
 
-    def conjure_vector(self, embedder, associate_image: Optional[AssociateImage] = paste_description):
+    async def conjure_vector(self, make_embedding, associate_image: Optional[AssociateImage] = paste_description):
         if self.vector and len(self.vector) > 0:
             return self.vector
 
@@ -71,9 +71,9 @@ class SearchProblem(BaseModel):
                 return
 
             self.associate_image(associate=associate_image)
-            return self.conjure_vector(embedder)
+            return self.conjure_vector(make_embedding)
 
-        vector_embedded = embedder(refined_math_problem)
+        vector_embedded = await make_embedding(refined_math_problem)
 
         self.vector = vector_embedded
 
@@ -102,8 +102,8 @@ class ProblemQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True, validate_default=True,
                               use_enum_values=True)
 
-    query_type: QueryType | None = None
-    index_type: IndexType | None = None
+    query_type: str | None = None
+    index_type: str | None = None
 
     vector_query: VectorQuery | None = None
     search_problem: SearchProblem | None = None
@@ -120,7 +120,7 @@ class ProblemQuery(BaseModel):
             self.query_type = QueryType.SOLUTION.value
             self.index_type = IndexType.SOLUTION.value
 
-    def search_similar_problems(self, type_value: SearchType):
+    async def search_similar_problems(self, type_value: SearchType):
         search_problem = self.search_problem
         vector_query = self.vector_query
         if self.query_type is None or self.index_type is None:
@@ -128,8 +128,8 @@ class ProblemQuery(BaseModel):
             vector_query.index = self.index_type
             vector_query.path = self.query_type
 
-        embedder = vector_query.embeddings.embed_query
-        vector = search_problem.conjure_vector(embedder=embedder)
+        async_embed_query = vector_query.embeddings.aembed_query
+        vector = await search_problem.conjure_vector(make_embedding=async_embed_query)
         query = search_problem.refined_math_problem
 
         unset_fields = ['problemEmbedding', 'questionEmbedding', 'solutionEmbedding', 'descriptionEmbedding',
@@ -138,6 +138,6 @@ class ProblemQuery(BaseModel):
 
         # print(f"index: {vector_query.index}")
         # print(f"path: {vector_query.path}")
-        retrieved_results = vector_query.content_retriever(query=query, vector=vector, remove_fields=unset_fields)
+        retrieved_results = await vector_query.content_retriever(query=query, vector=vector, remove_fields=unset_fields)
 
         return retrieved_results
