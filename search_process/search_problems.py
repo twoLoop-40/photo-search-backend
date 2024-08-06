@@ -5,7 +5,7 @@ from typing import Optional, Any
 
 from pydantic import BaseModel, Field, ConfigDict
 
-from concept_graph.vector_query import VectorQuery
+from search_process import VectorQuery
 
 image_mark = r'<!-- image -->'
 

@@ -4,8 +4,8 @@ import os
 from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, Field
 
-from db.db_basics import ConnectionDB
-from db.queries import find_by_aggregation
+from db.connect_db import connection
+from db.query_methods import find_by_aggregation
 
 load_dotenv()
 
@@ -24,8 +24,8 @@ class VectorQuery(BaseModel):
     db_name: str = Field(default="math_concepts")
     coll_name: str = Field(default="concepts_2015")
 
-    def content_retriever(self, query: str, vector: list[float] | None = None, score_limit=0.5, limit=20,
-                          remove_fields: list[str] | None = None):
+    async def content_retriever(self, query: str, vector: list[float] | None = None, score_limit=0.5, limit=20,
+                                remove_fields: list[str] | None = None):
         embeddings = self.embeddings
         num_candidates = self.num_candidates
         index = self.index
@@ -51,12 +51,13 @@ class VectorQuery(BaseModel):
             {"$sort": {"score": -1}},
             {"$unset": remove_fields}
         ]
+
         db_name = self.db_name
         coll_name = self.coll_name
 
-        connection = ConnectionDB(db_name=db_name, coll_name=coll_name)
+        execute = connection.execute_query(find_by_aggregation)
+        result_contents = await execute(db_name, coll_name, pipeline)
 
-        result_contents = connection.execute_query(find_by_aggregation, pipeline)
         return result_contents
 
 
